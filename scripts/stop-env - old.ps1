@@ -1,26 +1,16 @@
 # -----------------------------------------------------------
 # Stop Script for Local DevOps Platform Environment
 # -----------------------------------------------------------
-# This script shuts down the DevOps development platform.
-#
-# Components stopped:
-#
-# Jenkins CI/CD server
-# Port-forward background jobs
-# Monitoring stack (Prometheus + Grafana)
+# This script shuts down the complete Kubernetes environment
+# including:
+# Helm deployments
+# Monitoring stack
+# Port-forward jobs
 # Kind Kubernetes cluster
 # Docker containers
 # Docker Desktop
-#
-# IMPORTANT (Day 5 Change)
-# Application deployment is now handled by Jenkins CI/CD.
-# Therefore Helm application releases are no longer removed
-# manually from this script.
-#
-# When the Kind cluster is deleted, all workloads are removed.
 # -----------------------------------------------------------
 
-Write-Host ""
 Write-Host "Stopping DevOps Kubernetes Environment..." -ForegroundColor Yellow
 
 $CLUSTER_NAME="career-cluster"
@@ -29,10 +19,9 @@ $CLUSTER_NAME="career-cluster"
 # -----------------------------------------------------------
 # Stop Background Port Forward Jobs
 # -----------------------------------------------------------
-# These jobs were started in start-devops.ps1 for:
-# - Ingress controller access
-# - Grafana dashboard access
-# -----------------------------------------------------------
+# These jobs were started in the start script for:
+# Ingress access
+# Grafana dashboard access
 
 Write-Host ""
 Write-Host "Stopping background port-forward jobs..."
@@ -42,53 +31,33 @@ Remove-Job * -ErrorAction SilentlyContinue
 
 
 # -----------------------------------------------------------
-# Stop Jenkins CI/CD Server
+# OLD METHOD (Raw Kubernetes Manifests)
 # -----------------------------------------------------------
-# Jenkins runs inside Docker and performs:
+# Previously resources were removed using:
 #
-# - CI/CD pipeline execution
-# - Docker image builds
-# - Kubernetes deployments
+# kubectl delete -f k8s/
 #
-# Stopping the container ensures the CI/CD server
-# shuts down cleanly.
+# This is no longer used because the application
+# is now managed using Helm.
+
+
 # -----------------------------------------------------------
+# Remove Helm Application Release
+# -----------------------------------------------------------
+# Removes frontend, backend, postgres, ingress,
+# autoscaler and related Kubernetes resources.
 
 Write-Host ""
-Write-Host "Stopping Jenkins CI/CD server..."
+Write-Host "Removing Helm application release..."
 
-docker stop jenkins 2>$null
-docker rm jenkins 2>$null
-
-
-# -----------------------------------------------------------
-# OLD APPLICATION REMOVAL METHOD (Deprecated)
-# -----------------------------------------------------------
-# Previously the application was manually removed using Helm.
-#
-# helm uninstall career-app
-#
-# This is no longer required because:
-#
-# - The entire cluster is deleted during shutdown
-# - Kubernetes resources are automatically removed
-# - Jenkins CI/CD now manages application lifecycle
-#
-# The code is intentionally kept commented to document
-# the platform evolution.
-# -----------------------------------------------------------
-
-# Write-Host ""
-# Write-Host "Removing Helm application release..."
-# helm uninstall career-app 2>$null
+helm uninstall career-app 2>$null
 
 
 # -----------------------------------------------------------
 # Remove Monitoring Stack
 # -----------------------------------------------------------
-# Removes Prometheus, Grafana, Alertmanager,
-# Node Exporter and monitoring components.
-# -----------------------------------------------------------
+# This removes Prometheus, Grafana, Alertmanager,
+# Node Exporter and Kubernetes monitoring resources.
 
 Write-Host ""
 Write-Host "Removing Monitoring Stack (Prometheus + Grafana)..."
@@ -101,10 +70,9 @@ helm uninstall prometheus 2>$null
 # -----------------------------------------------------------
 # This removes the local Kubernetes control plane
 # and all cluster nodes.
-# -----------------------------------------------------------
 
 Write-Host ""
-Write-Host "Deleting Kind Kubernetes cluster..."
+Write-Host "Deleting Kind cluster..."
 
 C:\Users\Administrator\Desktop\DevOps\Kubernetes\kind.exe delete cluster --name $CLUSTER_NAME
 
@@ -113,7 +81,6 @@ C:\Users\Administrator\Desktop\DevOps\Kubernetes\kind.exe delete cluster --name 
 # Remove Leftover Kind Containers
 # -----------------------------------------------------------
 # Occasionally Docker containers remain after cluster deletion.
-# -----------------------------------------------------------
 
 Write-Host ""
 Write-Host "Removing leftover Kind containers (if any)..."
@@ -124,9 +91,8 @@ docker rm -f $(docker ps -aq --filter "name=career-cluster") 2>$null
 # -----------------------------------------------------------
 # Clean Unused Docker Containers
 # -----------------------------------------------------------
-# Removes stopped containers created during testing
-# or CI/CD builds.
-# -----------------------------------------------------------
+# Removes stopped containers created during builds
+# or testing.
 
 Write-Host ""
 Write-Host "Cleaning unused Docker containers..."
@@ -135,22 +101,9 @@ docker container prune -f
 
 
 # -----------------------------------------------------------
-# Optional Cleanup — Remove Dangling Images
-# -----------------------------------------------------------
-# Helpful during repeated CI/CD testing to reclaim disk space.
-# -----------------------------------------------------------
-
-Write-Host ""
-Write-Host "Cleaning unused Docker images..."
-
-docker image prune -f
-
-
-# -----------------------------------------------------------
 # Stop Docker Desktop
 # -----------------------------------------------------------
-# Optional step to fully shut down the container runtime.
-# -----------------------------------------------------------
+# Optional step to fully shut down local container runtime.
 
 Write-Host ""
 Write-Host "Stopping Docker Desktop..."
@@ -167,6 +120,3 @@ if ($dockerProcesses) {
 
 Write-Host ""
 Write-Host "Environment Stopped Successfully." -ForegroundColor Red
-Write-Host ""
-Write-Host "To start the platform again run:"
-Write-Host ".\scripts\start-devops.ps1"
