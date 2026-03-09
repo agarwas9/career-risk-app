@@ -4,6 +4,8 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+console.log("Deployed by Jenkins CI/CD");
+
 const pool = new Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
