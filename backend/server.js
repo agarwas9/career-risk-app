@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 
@@ -13,21 +12,59 @@ const pool = new Pool({
     port: process.env.DB_PORT,
 });
 
-pool.query(`
-    CREATE TABLE IF NOT EXISTS records (
-        id SERIAL PRIMARY KEY,
-        company TEXT NOT NULL,
-        position TEXT NOT NULL,
-        learned TEXT NOT NULL,
-        status TEXT NOT NULL
-    );
-`).then(() => {
-    console.log("Table ready");
-}).catch(err => {
-    console.error("Error creating table", err);
-});
+async function startServer() {
+    let retries = 10;
+
+    while (retries) {
+        try {
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS records (
+                    id SERIAL PRIMARY KEY,
+                    company TEXT NOT NULL,
+                    position TEXT NOT NULL,
+                    learned TEXT NOT NULL,
+                    status TEXT NOT NULL
+                );
+            `);
+
+            console.log("Database ready. Table ensured.");
+            break;
+        } catch (err) {
+            console.log("Waiting for database...");
+            retries--;
+            await new Promise(res => setTimeout(res, 3000));
+        }
+    }
+
+    if (!retries) {
+        console.error("Database not reachable. Exiting.");
+        process.exit(1);
+    }
+
+    app.listen(PORT, () => {
+        console.log("Server running on http://localhost:" + PORT);
+    });
+}
+
+startServer();
 
 app.use(express.json());
+
+const cors = require('cors');
+app.use(cors());
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+
+app.get('/ready', async (req, res) => {
+    try {
+        await pool.query('SELECT 1');
+        res.status(200).json({ status: "ready" });
+    } catch (err) {
+        res.status(500).json({ status: "not ready" });
+    }
+});
 
 function generateRiskScore(company, position) {
     const combined = company + position;
