@@ -1,11 +1,13 @@
 backend:
   image: career-backend
   replicas: 2
+  tag: latest
   port: 3000
 
 frontend:
   image: career-frontend
   port: 80
+  tag: latest
   nodePort: 30007
 
 postgres:

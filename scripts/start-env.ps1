@@ -292,7 +292,7 @@ Write-Host ""
 Write-Host "Application deployments are handled by Jenkins CI/CD." -ForegroundColor Yellow
 Write-Host ""
 
-Write-Host "To deploy a new version:"
+Write-Host "To deploy a new vaersion:"
 Write-Host "1) Make code changes"
 Write-Host "2) git add ."
 Write-Host "3) git commit -m 'update'"
